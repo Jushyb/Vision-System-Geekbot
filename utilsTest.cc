@@ -14,16 +14,16 @@ using namespace std;
 int main(){
 
 float u[] = 
-	    {1,
-	     2,
-	     3};
+	    {1.0,
+	     2.0,
+	     3.0};
 
 float v[] = {
-            {4,
-             5,
-             6}; 
+             4.0,
+             5.0,
+             6.0}; 
 float a[] = 
-            {2, 1
+            {2, 1,
              1, 2};
 
 int rows_a = 2;
@@ -38,7 +38,7 @@ int cols_b = 4;
 
 // --------------------
 float c[] = 
-            {0,0,0,0
+            {0,0,0,0,
              0,0,0,0};
 int rows_c = 2;
 int cols_c = 4;
@@ -48,12 +48,42 @@ int cols_c = 4;
 int rows = 3;
 float alpha = 2.0;
 
+// --------------------
+
+float result[rows];
+float norm = 0.0;
+float dotProductResult = 0.0;
+
+// --------------------
+
 vectorPrint(u, rows);
-
-vectorScale(u,rows,alpha,v);
 vectorPrint(v,rows);
+// prints rows
 
-// added in lecture V
+//vectorScale(u,rows,alpha,v);
+// commented out to show functionallity of vectorSubtract,
+// using original vectors
+
 matrixMult(a,rows_a,cols_a,b,rows_b,cols_b,c);
+// added in lecture
 
+// --------------------
+// added for hw1
+
+vectorDotProduct(u, v, rows, dotProductResult);
+vectorPrint(&dotProductResult, 1);
+// should print out 32.0
+
+vectorSubtract(u, rows, v, result);
+vectorPrint(result,rows);
+// should be [-3.0, -3.0, -3.0]
+
+vectorNorm(u, rows, norm);
+float normArray[] = {norm};
+vectorPrint(normArray, 1);
+// should return 3.7
+
+
+
+return 0;
 }

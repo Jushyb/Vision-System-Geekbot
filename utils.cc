@@ -39,7 +39,7 @@ void matrixMult(float*a, int rows_a, int cols_a, float*b, int rows_b, int cols_b
   {
     for(int row = 0; row < rows; row++)
     {
-      for(int col = 0; col < cols: col++)
+      for(int col = 0; col < cols_b; col++)
       {
         index = row*cols + col;
         c[index] = 0.0;
@@ -52,8 +52,40 @@ void matrixMult(float*a, int rows_a, int cols_a, float*b, int rows_b, int cols_b
   }
   else
   {
-    printf("Can't multiply. Dimensions are incorrect\n")
-    exit(0)
+    printf("Can't multiply. Dimensions are incorrect\n");
+    exit(0);
   }
 
 }
+
+// added for hw1
+
+//---------------------------------------------------------------
+void vectorDotProduct(float* u, float* v, int size, float& sum)
+{
+  sum = 0.0;
+  for(int i = 0; i < size; i++)
+  {
+    sum += u[i] * v[i];
+  }
+}
+//---------------------------------------------------------------
+
+void vectorSubtract(float* a, int rows, float* b, float* result)
+{
+  for (int i = 0; i < rows; i++)
+  {
+    result[i] = a[i] - b[i];
+  }
+}
+//---------------------------------------------------------------
+void vectorNorm(float*a, int rows, float& norm)
+{
+ float sum = 0.0;
+ for(int i = 0; i < rows; i++)
+ {
+  sum+= a[i] * a[i];
+ } 
+ norm = sqrt(sum);
+}
+//---------------------------------------------------------------
