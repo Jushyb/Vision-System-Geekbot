@@ -17,7 +17,7 @@ void matrixMult(float* a, int rows_a, int cols_a, float* b, int rows_b, int cols
 
 // Hw1 Changes
 
-void vectorDotProduct(float* u, float* v, int size, float& result);
+void vectorDotProduct(float* a, float* b, int size, float& result);
 // takes the float sum and sets to 0.0, uses a loop 
 // to cycle through the size(rows) of the matrix,
 // and changes sum to sum + u[i] * v[i], populating result into the answer
@@ -25,7 +25,7 @@ void vectorDotProduct(float* u, float* v, int size, float& result);
 void vectorScaling();
 // I think this is already added? under vectorScale()
 
-void vectorSubtract(float* u, int rows, float* v, float* result);
+void vectorSubtract(float* a, int rows, float* b, float* sum);
 // loops through a and b while subtracting a[i] - b[i] equaling result[i]
 // updates result[i] as it loops
 

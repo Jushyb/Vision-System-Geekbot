@@ -61,12 +61,12 @@ void matrixMult(float*a, int rows_a, int cols_a, float*b, int rows_b, int cols_b
 // added for hw1
 
 //---------------------------------------------------------------
-void vectorDotProduct(float* u, float* v, int size, float& sum)
+void vectorDotProduct(float* a, float* b, int size, float& sum)
 {
   sum = 0.0;
   for(int i = 0; i < size; i++)
   {
-    sum += u[i] * v[i];
+    sum += a[i] * b[i];
   }
 }
 //---------------------------------------------------------------

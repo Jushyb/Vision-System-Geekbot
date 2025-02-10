@@ -55,8 +55,10 @@ float norm = 0.0;
 float dotProductResult = 0.0;
 
 // --------------------
-
+cout << "This should print the vector u, " << endl;
 vectorPrint(u, rows);
+
+cout << "This should print the vector v, " << endl;
 vectorPrint(v,rows);
 // prints rows
 
@@ -70,14 +72,19 @@ matrixMult(a,rows_a,cols_a,b,rows_b,cols_b,c);
 // --------------------
 // added for hw1
 
+cout<< "This will print vectorDotProduct(), " << endl;
+cout<< "(the answer should be 32.0) " << endl;
 vectorDotProduct(u, v, rows, dotProductResult);
 vectorPrint(&dotProductResult, 1);
 // should print out 32.0
 
+cout<< "This will vectorSubtract(), " << endl;
+cout<< "Should print -3.0, -3.0, -3.0 " << endl;
 vectorSubtract(u, rows, v, result);
 vectorPrint(result,rows);
 // should be [-3.0, -3.0, -3.0]
 
+cout << "This will assign vector normArray[] and it should print 3.7" << endl;
 vectorNorm(u, rows, norm);
 float normArray[] = {norm};
 vectorPrint(normArray, 1);
