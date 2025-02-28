@@ -36,18 +36,19 @@ numPoints = readParams(inputFile);
 
 printf( "Number of Points %d \n",numPoints);
 
-if(numPoints<12){
+if(numPoints<12)
+{
 	printf("Not enough points. Min of 12 are needed \n");
 	exit(0);
 }
 
 //define input vectors
-float   u[numPoints];
-float   v[numPoints];
-float   x[numPoints];
-float   y[numPoints];
-float   z[numPoints];
-float  zc[numPoints];
+double u[numPoints];
+double v[numPoints];
+double x[numPoints];
+double y[numPoints];
+double z[numPoints];
+double zc[numPoints];
 
 //read calibration data
 readData(inputFile, u, v, x ,y, z, zc);
@@ -58,23 +59,28 @@ readData(inputFile, u, v, x ,y, z, zc);
 const int rows= 3*numPoints;
 const int cols = 12;
 
-float   m[rows*cols]={0.0};
-float   mTranspose[cols*rows];
-float   a[cols*cols];
-float   c[rows];
-float   b[cols];
-float   d[cols];
-float   q[cols*cols];
-float   qT[cols*cols];
-float   r[cols*cols];
-float   p[cols];
-float   k[9] = {0.0};
-float   test[cols*cols];
+double m[rows*cols];
+for (int i = 0; i < rows * cols; ++i) 
+{
+	m[i] = 0.0;
+}
+double mTranspose[cols*rows];
+double a[cols*cols];
+double c[rows];
+double b[cols];
+double d[cols];
+double q[cols*cols];
+double qT[cols*cols];
+double r[cols*cols];
+double p[cols];
+double k[9] = {0.0};
+double test[cols*cols];
 
-// initialize the M matrix 
+// initialize the M matrix
 int row=0;
 int col=0;
-for(int i=0;i<numPoints;i++){
+for(int i=0;i<numPoints;i++)
+{
 col=0;
   for (int j=0;j<3;j++){
      m[row*cols+col] = x[i];
@@ -98,7 +104,8 @@ col=0;
 
 //compute the right hand side vector b
 row=0;
-for(int i=0;i<numPoints;i++){
+for(int i=0;i<numPoints;i++)
+{
  c[row]=u[i]*zc[i];
  row++;
  c[row]=v[i]*zc[i];
