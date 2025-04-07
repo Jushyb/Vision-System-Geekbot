@@ -1,134 +1,101 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
+#include <iostream>
+#include <fstream>
+#include <opencv2/opencv.hpp>
 #include "imageUtils.h"
-#include "matrixUtils.h"
-#include "utils.h"
+#include <climits> // For INT_MAX
 
-int main()
-{
-    const int imageWidth = 640;
-    const int imageHeight = 480;
-    const int blockWidth = 5;
-    const int blockHeight = 5;
 
-    const char* leftImagePath = "leftBW.ppm";
-    const char* rightImagePath = "rightBW.ppm";
-    const char* disparityImagePath = "disparity.ppm";
-    const char* depthImagePath = "depth.ppm";
+int main() {
+    std::cout << "[INFO] Starting stereo.cc (disparity + depth computation)\n";
 
-    unsigned char* disparityImage = (unsigned char*) malloc(imageHeight * imageWidth * sizeof(unsigned char));
-    unsigned char* depthImage = (unsigned char*) malloc(imageHeight * imageWidth * sizeof(unsigned char));
+    // === STEP 1: Load rectified stereo images ===
+    cv::Mat leftColor = cv::imread("left_rectified.ppm");
+    cv::Mat rightColor = cv::imread("right_rectified.ppm");
 
-    PPMImage* leftImage = readPPM(leftImagePath, 0);
-    PPMImage* rightImage = readPPM(rightImagePath, 0);
+    if (leftColor.empty() || rightColor.empty()) {
+        std::cerr << "[ERROR] Failed to load left_rectified.ppm or right_rectified.ppm!\n";
+        return -1;
+    }
+    std::cout << "[INFO] Successfully loaded rectified images.\n";
 
-//******************************************************************************************************************************************************
+    // === STEP 2: Convert to grayscale ===
+    cv::Mat grayLeft, grayRight;
+    try {
+        cv::cvtColor(leftColor, grayLeft, cv::COLOR_BGR2GRAY);
+        cv::cvtColor(rightColor, grayRight, cv::COLOR_BGR2GRAY);
+        std::cout << "[INFO] Grayscale conversion successful.\n";
+    } catch (cv::Exception& e) {
+        std::cerr << "[FATAL] cvtColor failed: " << e.what() << std::endl;
+        return -1;
+    }
 
-    // Step 1: Compute disparity image based on block average comparison
-    for (int blockRow = 0; blockRow < imageHeight; blockRow += blockHeight)
-    {
-        for (int blockCol = 0; blockCol < imageWidth; blockCol += blockWidth)
-        {
-            double leftBlockSum = 0.0;
-            double rightBlockSum = 0.0;
-            int numPixelsInBlock = 0;
+    int rows = grayLeft.rows;
+    int cols = grayLeft.cols;
 
-            for (int localRow = 0; localRow < blockHeight; localRow++)
-            {
-                for (int localCol = 0; localCol < blockWidth; localCol++)
-                {
-                    int pixelX = blockCol + localCol;
-                    int pixelY = blockRow + localRow;
-                    if (pixelX < imageWidth && pixelY < imageHeight)
-                    {
-                        int pixelIndex = pixelY * imageWidth + pixelX;
-                        leftBlockSum += leftImage->data[pixelIndex];
-                        rightBlockSum += rightImage->data[pixelIndex];
-                        numPixelsInBlock++;
+    // === STEP 3: Prepare output images ===
+    cv::Mat disparityMap(rows, cols, CV_8U, cv::Scalar(0));
+    cv::Mat depthMap(rows, cols, CV_32F, cv::Scalar(0.0f));
+
+    // === STEP 4: Disparity parameters ===
+    int windowSize = 5;
+    int halfWindow = windowSize / 2;
+    int maxDisparity = 64;
+
+    // Camera parameters (from calibration)
+    float focalLength = 578.86f;        // pixels
+    float baseline = 0.0589621f;        // meters
+
+    // === STEP 5: Compute disparity using SAD block matching ===
+    std::cout << "[INFO] Computing disparity and depth...\n";
+
+    for (int y = halfWindow; y < rows - halfWindow; ++y) {
+        for (int x = halfWindow; x < cols - halfWindow; ++x) {
+            int bestDisparity = 0;
+            int minSAD = INT_MAX;
+
+            for (int d = 0; d < maxDisparity; ++d) {
+                int xr = x - d;
+                if (xr - halfWindow < 0)
+                    break;
+
+                int SAD = 0;
+                for (int wy = -halfWindow; wy <= halfWindow; ++wy) {
+                    for (int wx = -halfWindow; wx <= halfWindow; ++wx) {
+                        int leftPixel = grayLeft.at<uchar>(y + wy, x + wx);
+                        int rightPixel = grayRight.at<uchar>(y + wy, xr + wx);
+                        SAD += std::abs(leftPixel - rightPixel);
                     }
+                }
+
+                if (SAD < minSAD) {
+                    minSAD = SAD;
+                    bestDisparity = d;
                 }
             }
 
-            double leftBlockAvg = leftBlockSum / numPixelsInBlock;
-            double rightBlockAvg = rightBlockSum / numPixelsInBlock;
+            // === STEP 6: Save disparity (scaled) and compute depth ===
+            disparityMap.at<uchar>(y, x) = static_cast<uchar>((bestDisparity * 255) / maxDisparity);
 
-            double blendedValue = (leftBlockAvg + rightBlockAvg) / 2.0;
-            double blockDifference = fabs(leftBlockAvg - rightBlockAvg);
-
-            // Apply soft confidence weighting
-            double matchConfidence = fmax(0.0, 1.0 - blockDifference / 50.0); // range [0,1], higher when pixels are closer
-            unsigned char disparityPixelValue = (unsigned char)(matchConfidence * blendedValue + (1.0 - matchConfidence) * 255.0);
-
-            //Computing the disparity value
-
-            if (disparityPixelValue > 255) disparityPixelValue = 255;
-
-            for (int localRow = 0; localRow < blockHeight; localRow++)
-            {
-                for (int localCol = 0; localCol < blockWidth; localCol++)
-                {
-                    int pixelX = blockCol + localCol;
-                    int pixelY = blockRow + localRow;
-                    if (pixelX < imageWidth && pixelY < imageHeight)
-                        //Writing the result to ever pixel block
-                        disparityImage[pixelY * imageWidth + pixelX] = disparityPixelValue;
-                }
+            if (bestDisparity > 0) {
+                float depth = (focalLength * baseline) / static_cast<float>(bestDisparity);
+                depthMap.at<float>(y, x) = depth;
+            } else {
+                depthMap.at<float>(y, x) = 0.0f;
             }
         }
     }
 
-//******************************************************************************************************************************************************
+    // === STEP 7: Prepare final output images (convert to 3-channel BGR) ===
+    cv::Mat disparityColor, depthVis, depthColor;
+    cv::normalize(depthMap, depthVis, 0, 255, cv::NORM_MINMAX, CV_8U);
 
-    // Step 2: Slight blur with center-weighting to improve depth smoothness without over-smoothing
-    for (int blockRow = 0; blockRow < imageHeight; blockRow += blockHeight)
-    {
-        for (int blockCol = 0; blockCol < imageWidth; blockCol += blockWidth)
-        {
-            double weightedSum = 0.0;
-            double totalWeight = 0.0;
+    cv::cvtColor(disparityMap, disparityColor, cv::COLOR_GRAY2BGR);
+    cv::cvtColor(depthVis, depthColor, cv::COLOR_GRAY2BGR);
 
-            for (int localRow = 0; localRow < blockHeight; localRow++)
-            {
-                for (int localCol = 0; localCol < blockWidth; localCol++)
-                {
-                    int pixelX = blockCol + localCol;
-                    int pixelY = blockRow + localRow;
-                    if (pixelX < imageWidth && pixelY < imageHeight)
-                    {
-                        //center weighted averaging process
-                        int pixelIndex = pixelY * imageWidth + pixelX;
-                        double disparityValue = disparityImage[pixelIndex];
-                        double centerWeight = 1.0 - (fabs(localCol - blockWidth / 2) + fabs(localRow - blockHeight / 2)) * 0.1;
-                        if (centerWeight < 0.1) centerWeight = 0.1; // avoid zero weight
-                        weightedSum += disparityValue * centerWeight;
-                        totalWeight += centerWeight;
-                    }
-                }
-            }
-
-            unsigned char smoothedDepthValue = (unsigned char)(weightedSum / totalWeight);
-
-            for (int localRow = 0; localRow < blockHeight; localRow++)
-            {
-                for (int localCol = 0; localCol < blockWidth; localCol++)
-                {
-                    int pixelX = blockCol + localCol;
-                    int pixelY = blockRow + localRow;
-                    if (pixelX < imageWidth && pixelY < imageHeight)
-                        depthImage[pixelY * imageWidth + pixelX] = smoothedDepthValue;
-                }
-            }
-        }
-    }
-
-    writePPM(disparityImagePath, imageWidth, imageHeight, 255, 0, disparityImage);
-    writePPM(depthImagePath, imageWidth, imageHeight, 255, 0, depthImage);
-
-    freePPM(leftImage);
-    freePPM(rightImage);
-    free(disparityImage);
-    free(depthImage);
+    // === STEP 8: Save results as PPM ===
+    cv::imwrite("disparity_custom.ppm", disparityColor);
+    cv::imwrite("depth_map.ppm", depthColor);
+    std::cout << "[INFO] Saved disparity_custom.ppm and depth_map.ppm\n";
 
     return 0;
 }
